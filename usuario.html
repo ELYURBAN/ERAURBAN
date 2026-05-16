@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel Asesor | ERA URBAN</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #FFFFFF; --surface: #F1F3F5; --border: #E2E8F0;
+            --text: #1A1A1A; --muted: #64748B; --primary: #7C3AED; --primary-hover: #6D28D9;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding: 30px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid var(--surface); padding-bottom: 15px; }
+        .alert-bar { padding: 12px; border-radius: 6px; background-color: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; margin-bottom: 20px; font-weight: 500; display: none; }
+        .grid-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .card-box { border: 1px solid var(--border); padding: 20px; border-radius: 8px; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 5px; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; }
+        .btn { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn:hover { background: var(--primary-hover); }
+        table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { background: var(--surface); }
+        .badge-low { background: #FEE2E2; color: #991B1B; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>Módulo de Ventas Asesores</h1>
+            <p id="txt-welcome" style="color: var(--muted); font-size: 14px;">Sesión Activa</p>
+        </div>
+        <button style="padding:8px 15px; background:var(--surface); border:1px solid var(--border); border-radius:6px; cursor:pointer;" onclick="window.location.href='index.html'">Salir</button>
+    </header>
+
+    <div id="notificacion-stock" class="alert-bar">⚠️ Alerta: Existen productos con stock crítico en el inventario. Revise la lista.</div>
+
+    <div class="grid-layout">
+        <div class="card-box">
+            <h2 style="font-size:18px; margin-bottom:15px;">Registrar Pedido Diario</h2>
+            <form id="form-pedido">
+                <div class="form-group">
+                    <label>Seleccionar Producto</label>
+                    <select id="ped-producto" class="form-control" onchange="actualizarPrecioCalculado()"></select>
+                </div>
+                <div class="form-group">
+                    <label>Cantidad Vendida</label>
+                    <input type="number" id="ped-cantidad" class="form-control" value="1" min="1" oninput="actualizarPrecioCalculado()">
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Venta</label>
+                    <input type="date" id="ped-fecha" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Monto Total a Recaudar (S/)</label>
+                    <input type="number" id="ped-monto" class="form-control" readonly style="background:#F8FAFC; font-weight:600;">
+                </div>
+                <button type="button" class="btn" onclick="procesarVenta()">Confirmar e Ingresar Venta</button>
+            </form>
+        </div>
+
+        <div class="card-box">
+            <h2 style="font-size:18px; margin-bottom:15px;">Disponibilidad de Catálogo</h2>
+            <table id="tabla-stock-usuario">
+                <thead>
+                    <tr><th>Producto</th><th>Stock Disponible</th><th>Costo de Venta Unitario</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://xprloimnqbjxlflntuvh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwcmxvaW1ucWJqeGxmbG50dXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzU5MTAsImV4cCI6MjA5NDQ1MTkxMH0.1f0DIH1GdfeL70e7WRp3_xRUE7XYkLecWtRfNGOtw4o";
+        
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        let listaProductos = [];
+
+        // Colocar fecha actual automáticamente por defecto
+        document.getElementById('ped-fecha').value = new Date().toISOString().substring(0, 10);
+
+        async function initAsesor() {
+            const { data, error } = await _supabase.from('productos').select('*').order('producto', { ascending: true });
+            if (error || !data) return;
+            
+            listaProductos = data;
+            
+            const select = document.getElementById('ped-producto');
+            const tbody = document.getElementById('tabla-stock-usuario').querySelector('tbody');
+            
+            select.innerHTML = '';
+            tbody.innerHTML = '';
+            let stockCritico = false;
+
+            data.forEach(p => {
+                // CORRECCIÓN: Almacenar data-costo con el valor de 'costo_venta' en vez de 'precio_venta'
+                select.innerHTML += `<option value="${p.id}" data-costo="${p.costo_venta}">${p.producto}</option>`;
+                
+                // Alerta Estricta de Stock Bajo (Menor o igual a 5 unidades)
+                const badge = p.stock <= 5 ? '<span class="badge-low">¡Poco Stock!</span>' : '';
+                if(p.stock <= 5) stockCritico = true;
+
+                tbody.innerHTML += `<tr><td>${p.producto}</td><td>${p.stock} ${badge}</td><td>S/ ${p.costo_venta}</td></tr>`;
+            });
+
+            if(stockCritico) {
+                document.getElementById('notificacion-stock').style.display = 'block';
+            } else {
+                document.getElementById('notificacion-stock').style.display = 'none';
+            }
+            actualizarPrecioCalculado();
+        }
+
+        function actualizarPrecioCalculado() {
+            const select = document.getElementById('ped-producto');
+            if(!select || !select.selectedOptions[0]) return;
+            
+            // CORRECCIÓN: Obtener el atributo 'data-costo' correspondiente al costo_venta unitario real
+            const costoUnitario = parseFloat(select.selectedOptions[0].getAttribute('data-costo')) || 0;
+            const cantidad = parseInt(document.getElementById('ped-cantidad').value) || 0;
+            
+            document.getElementById('ped-monto').value = (costoUnitario * cantidad).toFixed(2);
+        }
+
+        async function procesarVenta() {
+            const prodId = document.getElementById('ped-producto').value;
+            const cantidad = parseInt(document.getElementById('ped-cantidad').value) || 0;
+            const monto = parseFloat(document.getElementById('ped-monto').value) || 0;
+            const fecha = document.getElementById('ped-fecha').value;
+
+            const productoSeleccionado = listaProductos.find(x => x.id === prodId);
+            
+            if(!productoSeleccionado) return;
+            
+            if(cantidad > productoSeleccionado.stock) {
+                alert("❌ ERROR: La operación no cuadra con los libros de inventario. No hay suficiente stock para cubrir la venta.");
+                return;
+            }
+
+            const { error } = await _supabase.from('pedidos').insert([{
+                producto_id: prodId,
+                cantidad: cantidad,
+                monto_total: monto,
+                fecha_venta: fecha,
+                usuario_dni: '77101783' 
+            }]);
+
+            if(error) {
+                alert("Error al registrar venta: " + error.message);
+            } else {
+                alert("✅ Venta registrada correctamente. El inventario fue actualizado de inmediato.");
+                initAsesor();
+            }
+        }
+
+        window.onload = () => initAsesor();
+    </script>
+</body>
+</html>

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plataforma de Acceso | Sistema de Gestión</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg: #FFFFFF;
+            --color-surface: #F1F3F5; /* Plomo claro */
+            --color-border: #E2E8F0;  /* Plomo medio */
+            --color-text-main: #1A1A1A; /* Negro corporativo */
+            --color-text-muted: #64748B;
+            --color-primary: #7C3AED; /* Lila / Morado vibrante */
+            --color-primary-hover: #6D28D9;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--color-bg);
+            color: var(--color-text-main);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            background: var(--color-bg);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            padding: 40px 30px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        .brand-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .brand-header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--color-text-main);
+            letter-spacing: -0.5px;
+        }
+
+        .brand-header p {
+            font-size: 14px;
+            color: var(--color-text-muted);
+            margin-top: 8px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--color-text-main);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 15px;
+            background-color: var(--color-surface);
+            border: 1px solid transparent;
+            border-radius: 8px;
+            color: var(--color-text-main);
+            transition: all 0.2s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            background-color: var(--color-bg);
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
+        }
+
+        .btn-submit {
+            width: 100%;
+            padding: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            color: #FFFFFF;
+            background-color: var(--color-primary);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background-color: var(--color-primary-hover);
+        }
+
+        .alert {
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 20px;
+            display: none;
+            text-align: center;
+        }
+
+        .alert-error {
+            background-color: #FEE2E2;
+            color: #991B1B;
+            border: 1px solid #FCA5A5;
+        }
+
+        .alert-success {
+            background-color: #ECFDF5;
+            color: #065F46;
+            border: 1px solid #A7F3D0;
+        }
+
+        /* Footer sutil */
+        .login-footer {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 12px;
+            color: var(--color-text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="brand-header">
+            <h1>Sistema de Gestión</h1>
+            <p>Ingresa tus credenciales para continuar</p>
+        </div>
+
+        <div id="alertBox" class="alert"></div>
+
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="dniUser">DNI (Usuario)</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="text" 
+                        id="dniUser" 
+                        class="form-control" 
+                        placeholder="Ingrese su DNI" 
+                        maxlength="8" 
+                        pattern="\d*"
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="passwordUser">Contraseña</label>
+                <div class="input-wrapper">
+                    <input 
+                        type="password" 
+                        id="passwordUser" 
+                        class="form-control" 
+                        placeholder="••••••••" 
+                        required
+                    >
+                </div>
+            </div>
+
+            <button type="submit" id="btnIngresar" class="btn-submit">Iniciar Sesión</button>
+        </form>
+
+        <div class="login-footer">
+            &copy; 2026 ERA URBAN. Todos los derechos reservados.
+        </div>
+    </div>
+
+    <script>
+        // Configuración de credenciales de Supabase
+        const SUPABASE_URL = "https://xprloimnqbjxlflntuvh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwcmxvaW1ucWJqeGxmbG50dXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzU5MTAsImV4cCI6MjA5NDQ1MTkxMH0.1f0DIH1GdfeL70e7WRp3_xRUE7XYkLecWtRfNGOtw4o";
+        
+        // Inicialización corregida del cliente global de Supabase
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // Elementos del DOM
+        const loginForm = document.getElementById('loginForm');
+        const alertBox = document.getElementById('alertBox');
+        const btnIngresar = document.getElementById('btnIngresar');
+
+        // Manejador del Evento Login
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const dni = document.getElementById('dniUser').value.trim();
+            const password = document.getElementById('passwordUser').value.trim();
+
+            // Feedback visual de carga
+            btnIngresar.innerText = "Validando...";
+            btnIngresar.disabled = true;
+            ocultarAlerta();
+
+            try {
+                // Consulta directa a la tabla usuarios validando credenciales
+                const { data, error } = await _supabase
+                    .from('usuarios')
+                    .select('*')
+                    .eq('dni', dni)
+                    .eq('password', password)
+                    .maybeSingle();
+
+                if (error) {
+                    throw new Error("Error de conexión con la base de datos.");
+                }
+
+                if (!data) {
+                    throw new Error("DNI o contraseña incorrectos.");
+                }
+
+                // Lógica de redirección limpia por rol verificado
+                if (data.rol === 'admin') {
+                    mostrarAlerta("Acceso correcto como Administrador. Redirigiendo...", "success");
+                    setTimeout(() => {
+                        window.location.href = "admin.html"; 
+                    }, 1200);
+                } else {
+                    mostrarAlerta(`Bienvenido, ${data.nombre_completo || 'Asesor'}. Redirigiendo...`, "success");
+                    setTimeout(() => {
+                        window.location.href = "usuario.html"; 
+                    }, 1200);
+                }
+
+            } catch (err) {
+                mostrarAlerta(err.message, "error");
+                btnIngresar.innerText = "Iniciar Sesión";
+                btnIngresar.disabled = false;
+            }
+        });
+
+        // Funciones auxiliares de UI
+        function mostrarAlerta(mensaje, tipo) {
+            alertBox.innerText = mensaje;
+            alertBox.className = `alert alert-${tipo}`;
+            alertBox.style.display = 'block';
+        }
+
+        function ocultarAlerta() {
+            alertBox.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
