@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin | ERA URBAN</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0A0E17;             /* Negro Profundo Tecnológico */
+            --surface: #141B2D;        /* Gris Oscuro Metalizado */
+            --border: #242F4D;         /* Borde Plomo Oscuro */
+            --text: #FFFFFF;           /* Blanco Puro */
+            --muted: #8A99AD;          /* Plomo Atenuado */
+            --primary: #00F2FE;        /* Verde Agua Eléctrico */
+            --primary-hover: #00C9D4;
+            --gradient: linear-gradient(135deg, #00F2FE 0%, #4FACFE 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        body { 
+            background-color: var(--bg); 
+            background-image: radial-gradient(circle at 50% 10%, #152238 0%, #0A0E17 70%);
+            color: var(--text); 
+            display: block; 
+            padding: 30px; 
+            min-height: 100vh;
+        }
+        header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 30px; 
+            border-bottom: 1px solid var(--border); 
+            padding-bottom: 20px; 
+        }
+        h1 { font-size: 24px; font-weight: 700; letter-spacing: -0.5px; }
+        .tabs { display: flex; gap: 10px; margin-bottom: 25px; }
+        .tab-btn { 
+            padding: 12px 24px; 
+            border: 1px solid var(--border); 
+            background: var(--surface); 
+            color: var(--muted);
+            border-radius: 8px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            transition: all 0.3s ease; 
+            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 0.5px;
+        }
+        .tab-btn:hover { color: var(--text); border-color: var(--muted); }
+        .tab-btn.active { 
+            background: var(--gradient); 
+            color: #0A0E17; 
+            border-color: transparent;
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+        }
+        .panel-section { display: none; }
+        .panel-section.active { display: block; }
+        .grid-inputs { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); 
+            gap: 20px; 
+            background: rgba(20, 27, 45, 0.6); 
+            backdrop-filter: blur(10px);
+            padding: 25px; 
+            border-radius: 12px; 
+            margin-bottom: 25px; 
+            border: 1px solid var(--border);
+        }
+        .form-group label { 
+            display: block; 
+            font-size: 11px; 
+            font-weight: 600; 
+            margin-bottom: 8px; 
+            color: var(--primary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-control { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid var(--border); 
+            border-radius: 8px; 
+            background: rgba(10, 14, 23, 0.8); 
+            color: var(--text);
+            font-size: 14px; 
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.15);
+        }
+        .btn { 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            transition: all 0.3s ease; 
+            display: inline-flex; 
+            align-items: center; 
+            gap: 8px; 
+            text-transform: uppercase;
+            font-size: 13px;
+            letter-spacing: 0.5px;
+        }
+        .btn-primary { 
+            background: var(--gradient); 
+            color: #0A0E17; 
+            box-shadow: 0 4px 15px rgba(0, 242, 254, 0.2);
+        }
+        .btn-primary:hover { 
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+            filter: brightness(1.1);
+        }
+        .btn-excel { 
+            background: #107C41; 
+            color: white; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 15px rgba(16, 124, 65, 0.2);
+        }
+        .btn-excel:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(16, 124, 65, 0.4);
+            filter: brightness(1.1);
+        }
+        .btn-danger { 
+            background: rgba(220, 38, 38, 0.2); 
+            color: #FCA5A5; 
+            border: 1px solid #DC2626;
+            padding: 6px 12px; 
+            font-size: 11px; 
+            font-weight: 700;
+            text-transform: uppercase;
+            border-radius: 6px;
+        }
+        .btn-danger:hover {
+            background: #DC2626;
+            color: white;
+        }
+        table { 
+            width: 100%; 
+            border-collapse: separate; 
+            border-spacing: 0;
+            margin-top: 20px; 
+            font-size: 14px; 
+            background: rgba(20, 27, 45, 0.4);
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        th, td { padding: 14px 18px; text-align: left; border-bottom: 1px solid var(--border); }
+        th { 
+            background-color: var(--surface); 
+            font-weight: 600; 
+            color: var(--primary);
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: rgba(36, 47, 77, 0.3); }
+        .calculated-box { 
+            background: rgba(0, 242, 254, 0.05); 
+            border: 1px dashed var(--primary); 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            margin-top: 15px; 
+            font-weight: 600; 
+            color: var(--primary); 
+            letter-spacing: 0.3px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div>
+            <h1>PANEL ADMINISTRATIVO</h1>
+            <p style="color: var(--muted); font-size: 14px; margin-top: 4px;">ERA URBAN &bull; Gestión global en tiempo real</p>
+        </div>
+        <button class="btn btn-primary" onclick="window.location.href='index.html'">Cerrar Sesión</button>
+    </header>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab(event, 'productos')">Inventario y Productos</button>
+        <button class="tab-btn" onclick="switchTab(event, 'pedidos')">Pedidos Recibidos</button>
+        <button class="tab-btn" onclick="switchTab(event, 'usuarios')">Control de Usuarios</button>
+    </div>
+
+    <div id="sec-productos" class="panel-section active">
+        <form id="form-producto" onsubmit="event.preventDefault();">
+            <div class="grid-inputs">
+                <input type="hidden" id="prod-id">
+                <div class="form-group"><label>Producto</label><input type="text" id="prod-nombre" class="form-control" placeholder="Ej: Gorra Era Black" required></div>
+                <div class="form-group"><label>Stock Inicial</label><input type="number" id="prod-stock" class="form-control" oninput="calcularValoresAuto()" required></div>
+                <div class="form-group"><label>Inversión Inicial Total (S/)</label><input type="number" id="prod-inversion" class="form-control" oninput="calcularValoresAuto()" step="0.01" required></div>
+                <div class="form-group"><label>Costo de Venta Unitario (S/)</label><input type="number" id="prod-costo" class="form-control" oninput="calcularValoresAuto()" step="0.01" required></div>
+                <div class="form-group"><label>Precio Venta Calculado (S/)</label><input type="number" id="prod-precio-calculado" class="form-control" readonly style="background: rgba(10, 14, 23, 0.5); color: var(--primary); font-weight: 700;"></div>
+                <div class="form-group" style="display:flex; align-items:flex-end;"><button type="button" class="btn btn-primary" id="btn-guardar-prod" onclick="guardarProducto()">Guardar Producto</button></div>
+            </div>
+        </form>
+        <div class="calculated-box" id="ganancia-box">Precio Venta (Stock × Costo Venta): S/ 0.00 | Ganancia Neta Proyectada: S/ 0.00</div>
+        
+        <table id="tabla-productos">
+            <thead>
+                <tr><th>Producto</th><th>Stock Actual</th><th>Inversión</th><th>Costo Unidad</th><th>Precio Venta</th><th>Ganancia Proyectada</th><th>Acciones</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="sec-pedidos" class="panel-section">
+        <button class="btn btn-excel" onclick="exportarExcel()">Descargar Reporte Excel (.xlsx)</button>
+        <table id="tabla-pedidos">
+            <thead>
+                <tr><th>Fecha</th><th>Producto Vendido</th><th>Cantidad</th><th>Monto Recaudado</th><th>Vendedor (DNI)</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="sec-usuarios" class="panel-section">
+        <form id="form-usuario" onsubmit="event.preventDefault();">
+            <div class="grid-inputs">
+                <input type="hidden" id="user-id">
+                <div class="form-group"><label>DNI</label><input type="text" id="user-dni" class="form-control" maxlength="8" required></div>
+                <div class="form-group"><label>Nombre Completo</label><input type="text" id="user-nombre" class="form-control" required></div>
+                <div class="form-group"><label>Contraseña</label><input type="text" id="user-pass" class="form-control" required></div>
+                <div class="form-group"><label>Rol</label><select id="user-rol" class="form-control" style="background-color: rgba(10, 14, 23, 0.8); color: var(--text);"><option value="asesor">Asesor</option><option value="admin">Admin</option></select></div>
+                <div class="form-group" style="display:flex; align-items:flex-end;"><button type="button" class="btn btn-primary" id="btn-guardar-user" onclick="guardarUsuario()">Registrar Asesor</button></div>
+            </div>
+        </form>
+        <table id="tabla-usuarios">
+            <thead>
+                <tr><th>DNI</th><th>Nombre Asesor</th><th>Rol</th><th>Acciones</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <script>
+        const SUPABASE_URL = "https://xprloimnqbjxlflntuvh.supabase.co";
+        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhwcmxvaW1ucWJqeGxmbG50dXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzU5MTAsImV4cCI6MjA5NDQ1MTkxMH0.1f0DIH1GdfeL70e7WRp3_xRUE7XYkLecWtRfNGOtw4o";
+        const _supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function switchTab(e, tab) {
+            document.querySelectorAll('.panel-section').forEach(s => s.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            
+            document.getElementById(`sec-${tab}`).classList.add('active');
+            if(e && e.target) {
+                e.target.classList.add('active');
+            }
+            
+            if(tab === 'productos') cargarProductos();
+            if(tab === 'pedidos') cargarPedidos();
+            if(tab === 'usuarios') cargarUsuarios();
+        }
+
+        function calcularValoresAuto() {
+            const stock = parseFloat(document.getElementById('prod-stock').value) || 0;
+            const inversion = parseFloat(document.getElementById('prod-inversion').value) || 0;
+            const costoVentaUnitario = parseFloat(document.getElementById('prod-costo').value) || 0;
+            
+            // LÓGICA RECTIFICADA: Precio Venta Lote = Stock × Costo Venta Unitario
+            const precioCalculadoTot = stock * costoVentaUnitario;
+            document.getElementById('prod-precio-calculado').value = precioCalculadoTot.toFixed(2);
+            
+            // Ganancia Neta Proyectada = Precio Venta Lote - Inversión Inicial Total
+            const gananciaProyectada = precioCalculadoTot - inversion;
+            
+            document.getElementById('ganancia-box').innerText = `Precio Venta (Stock × Costo Venta): S/ ${precioCalculadoTot.toFixed(2)} | Ganancia Neta Proyectada: S/ ${gananciaProyectada.toFixed(2)}`;
+        }
+
+        async function cargarProductos() {
+            const { data, error } = await _supabase.from('productos').select('*').order('producto', { ascending: true });
+            if (error) return;
+            const tbody = document.getElementById('tabla-productos').querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(p => {
+                const gananciaRealTabla = parseFloat(p.precio_venta) - parseFloat(p.inversion);
+                tbody.innerHTML += `<tr>
+                    <td style="font-weight: 500;">${p.producto}</td>
+                    <td>${p.stock}</td>
+                    <td>S/ ${p.inversion}</td>
+                    <td>S/ ${p.costo_venta}</td>
+                    <td>S/ ${p.precio_venta}</td>
+                    <td style="color: var(--primary); font-weight: 600;">S/ ${gananciaRealTabla.toFixed(2)}</td>
+                    <td>
+                        <button class="btn btn-primary" style="padding:5px 10px; font-size:11px; margin-right: 5px;" onclick="editarProd('${p.id}','${p.producto}',${p.stock},${p.inversion},${p.costo_venta})">Editar</button>
+                        <button class="btn btn-danger" onclick="eliminarProducto('${p.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function editarProd(id, nombre, stock, inv, costo) {
+            document.getElementById('prod-id').value = id;
+            document.getElementById('prod-nombre').value = nombre;
+            document.getElementById('prod-stock').value = stock;
+            document.getElementById('prod-inversion').value = inv;
+            document.getElementById('prod-costo').value = costo;
+            document.getElementById('btn-guardar-prod').innerText = "Actualizar Producto";
+            calcularValoresAuto();
+        }
+
+        async function guardarProducto() {
+            const id = document.getElementById('prod-id').value;
+            const stock = parseInt(document.getElementById('prod-stock').value) || 0;
+            const costo = parseFloat(document.getElementById('prod-costo').value) || 0;
+            const precioCalculado = stock * costo;
+
+            const payload = {
+                producto: document.getElementById('prod-nombre').value,
+                stock: stock,
+                inversion: parseFloat(document.getElementById('prod-inversion').value) || 0,
+                costo_venta: costo,
+                precio_venta: precioCalculado
+            };
+
+            if(id) {
+                await _supabase.from('productos').update(payload).eq('id', id);
+            } else {
+                await _supabase.from('productos').insert([payload]);
+            }
+            
+            document.getElementById('prod-id').value = '';
+            document.getElementById('form-producto').reset();
+            document.getElementById('prod-precio-calculado').value = '';
+            document.getElementById('btn-guardar-prod').innerText = "Guardar Producto";
+            document.getElementById('ganancia-box').innerText = `Precio Venta (Stock × Costo Venta): S/ 0.00 | Ganancia Neta Proyectada: S/ 0.00`;
+            cargarProductos();
+        }
+
+        async function eliminarProducto(id) {
+            if(confirm("¿Está seguro de eliminar este producto del catálogo de inventario?")) {
+                const { error } = await _supabase.from('productos').delete().eq('id', id);
+                if(error) {
+                    alert("Error al eliminar: " + error.message);
+                } else {
+                    cargarProductos();
+                }
+            }
+        }
+
+        async function cargarPedidos() {
+            const { data, error } = await _supabase.from('pedidos').select('*, productos(producto)').order('created_at', { ascending: false });
+            if (error) return;
+            const tbody = document.getElementById('tabla-pedidos').querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(p => {
+                tbody.innerHTML += `<tr><td>${p.fecha_venta}</td><td style="font-weight: 500;">${p.productos?.producto || 'Desconocido'}</td><td>${p.cantidad}</td><td>S/ ${p.monto_total}</td><td>${p.usuario_dni}</td></tr>`;
+            });
+        }
+
+        async function cargarUsuarios() {
+            const { data, error } = await _supabase.from('usuarios').select('*').order('nombre_completo', { ascending: true });
+            if (error) return;
+            const tbody = document.getElementById('tabla-usuarios').querySelector('tbody');
+            tbody.innerHTML = '';
+            data.forEach(u => {
+                tbody.innerHTML += `<tr>
+                    <td>${u.dni}</td>
+                    <td style="font-weight: 500;">${u.nombre_completo}</td>
+                    <td><span style="color: ${u.rol === 'admin' ? 'var(--primary)' : 'var(--text)'}">${u.rol}</span></td>
+                    <td>
+                        <button class="btn btn-primary" style="padding:5px 10px; font-size:11px; margin-right: 5px;" onclick="editarUsuario('${u.id}','${u.dni}','${u.nombre_completo}','${u.password}','${u.rol}')">Editar</button>
+                        <button class="btn btn-danger" onclick="eliminarUsuario('${u.id}')">Eliminar</button>
+                    </td>
+                </tr>`;
+            });
+        }
+
+        function editarUsuario(id, dni, nombre, password, rol) {
+            document.getElementById('user-id').value = id;
+            document.getElementById('user-dni').value = dni;
+            document.getElementById('user-nombre').value = nombre;
+            document.getElementById('user-pass').value = password;
+            document.getElementById('user-rol').value = rol;
+            document.getElementById('btn-guardar-user').innerText = "Actualizar Asesor";
+        }
+
+        async function guardarUsuario() {
+            const id = document.getElementById('user-id').value;
+            const payload = {
+                dni: document.getElementById('user-dni').value.trim(),
+                nombre_completo: document.getElementById('user-nombre').value.trim(),
+                password: document.getElementById('user-pass').value.trim(),
+                rol: document.getElementById('user-rol').value
+            };
+            
+            let result;
+            if(id) {
+                result = await _supabase.from('usuarios').update(payload).eq('id', id);
+            } else {
+                result = await _supabase.from('usuarios').insert([payload]);
+            }
+
+            if (result.error) {
+                alert("Error al procesar usuario: " + result.error.message);
+            } else {
+                document.getElementById('user-id').value = '';
+                document.getElementById('form-usuario').reset();
+                document.getElementById('btn-guardar-user').innerText = "Registrar Asesor";
+                cargarUsuarios();
+            }
+        }
+
+        async function eliminarUsuario(id) {
+            if(confirm("¿Está seguro de eliminar este usuario?")) {
+                await _supabase.from('usuarios').delete().eq('id', id);
+                cargarUsuarios();
+            }
+        }
+
+        async function exportarExcel() {
+            const { data, error } = await _supabase
+                .from('pedidos')
+                .select('fecha_venta, quantity:cantidad, monto_total, usuario_dni, productos(producto, costo_venta)')
+                .order('fecha_venta', { ascending: false });
+
+            if(error || !data || data.length === 0) { 
+                alert("No hay pedidos registrados para exportar."); 
+                return; 
+            }
+
+            const datosProcesados = data.map(p => ({
+                "Fecha": p.fecha_venta,
+                "Producto": p.productos?.producto || 'Desconocido',
+                "Cantidad": p.quantity,
+                "Costo Unitario (S/)": p.productos?.costo_venta ? parseFloat(p.productos.costo_venta).toFixed(2) : '0.00',
+                "Monto Total Recaudado (S/)": p.monto_total ? parseFloat(p.monto_total).toFixed(2) : '0.00',
+                "Vendedor (DNI)": p.usuario_dni
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(datosProcesados);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Pedidos Era Urban");
+            
+            const maxCols = [{wch: 15}, {wch: 25}, {wch: 10}, {wch: 18}, {wch: 25}, {wch: 15}];
+            worksheet['!cols'] = maxCols;
+
+            XLSX.writeFile(workbook, "Reporte_Ventas_EraUrban.xlsx");
+        }
+
+        window.onload = () => {
+            cargarProductos();
+        };
+    </script>
+</body>
+</html>
